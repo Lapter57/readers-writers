@@ -1,31 +1,31 @@
-package monitor
+package wq
 
 import (
 	"container/list"
 	"sync"
 )
 
-type Condition struct {
+type WaitingQueue struct {
 	mu      sync.Mutex
 	queue   *list.List
 	waiting chan *list.List
 }
 
-func NewCondition() *Condition {
-	condition := &Condition{
+func NewWaitingQueue() *WaitingQueue {
+	condition := &WaitingQueue{
 		queue:   list.New(),
 		waiting: make(chan *list.List, 1),
 	}
 	return condition
 }
 
-func (c *Condition) enqueue(pid int64) {
+func (c *WaitingQueue) Enqueue(pid int64) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	c.queue.PushBack(pid)
 }
 
-func (c *Condition) wait(pid int64) {
+func (c *WaitingQueue) Wait(pid int64) {
 	for {
 		queue := <-c.waiting
 		topPid := queue.Front()
@@ -38,7 +38,7 @@ func (c *Condition) wait(pid int64) {
 	}
 }
 
-func (c *Condition) dequeue() {
+func (c *WaitingQueue) Dequeue() {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 	if c.queue.Len() != 0 {
@@ -46,6 +46,10 @@ func (c *Condition) dequeue() {
 	}
 }
 
-func (c *Condition) IsQueueEmpty() bool {
+func (c *WaitingQueue) IsQueueEmpty() bool {
 	return c.queue.Len() == 0
+}
+
+func (c *WaitingQueue) GetQueue() *list.List {
+	return c.queue
 }
