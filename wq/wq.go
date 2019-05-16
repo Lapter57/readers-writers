@@ -12,11 +12,11 @@ type WaitingQueue struct {
 }
 
 func NewWaitingQueue() *WaitingQueue {
-	condition := &WaitingQueue{
+	queue := &WaitingQueue{
 		queue:   list.New(),
 		waiting: make(chan *list.List, 1),
 	}
-	return condition
+	return queue
 }
 
 func (c *WaitingQueue) Enqueue(pid int64) {
