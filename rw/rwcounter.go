@@ -2,10 +2,8 @@ package rw
 
 import (
 	"fmt"
-	"math/rand"
 	"strings"
 	"sync"
-	"time"
 )
 
 type RWCounter struct {
@@ -51,13 +49,13 @@ func (rwc *RWCounter) printNumRW() {
 }
 
 func (rwc *RWCounter) GetReaders() int {
+	rwc.mu.Lock()
+	defer rwc.mu.Unlock()
 	return rwc.rs
 }
 
 func (rwc *RWCounter) GetWriters() int {
+	rwc.mu.Lock()
+	defer rwc.mu.Unlock()
 	return rwc.ws
-}
-
-func sleep() {
-	time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
 }

@@ -47,9 +47,13 @@ func (c *WaitingQueue) Dequeue() {
 }
 
 func (c *WaitingQueue) IsQueueEmpty() bool {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.queue.Len() == 0
 }
 
 func (c *WaitingQueue) GetQueue() *list.List {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 	return c.queue
 }

@@ -21,16 +21,16 @@ func init() {
 func main() {
 	var rwc *rw.RWCounter = rw.NewRWCounter()
 	var rwMu sync.RWMutex
-	var readersQueue *wq.WaitingQueue = wq.NewWaitingQueue()
-	var writersQueue *wq.WaitingQueue = wq.NewWaitingQueue()
+	var readersWaitQueue *wq.WaitingQueue = wq.NewWaitingQueue()
+	var writersWaitQueue *wq.WaitingQueue = wq.NewWaitingQueue()
 	var pool *pool.Pool = pool.NewPool(numReaders + numWriters)
 
 	for i := 0; i < numReaders; i++ {
-		pool.Exec(rw.NewReader(rwc, &rwMu, readersQueue, writersQueue))
+		pool.Exec(rw.NewReader(rwc, &rwMu, readersWaitQueue, writersWaitQueue))
 	}
 
 	for i := 0; i < numWriters; i++ {
-		pool.Exec(rw.NewWriter(rwc, &rwMu, readersQueue, writersQueue))
+		pool.Exec(rw.NewWriter(rwc, &rwMu, readersWaitQueue, writersWaitQueue))
 	}
 
 	pool.Wait()

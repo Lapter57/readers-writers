@@ -1,62 +1,66 @@
 package rw
 
 import (
-	"container/list"
+	"math/rand"
 	"readers-writers/wq"
 	"sync"
 	"sync/atomic"
+	"time"
 )
 
 var newReaderId int64 = -1
-var waitingReaders *list.List = list.New()
-var mu sync.Mutex
+var readersQueue *ReadersQueue = NewReadersQueue()
 
 type Reader struct {
-	id             int64
-	rwc            *RWCounter
-	rwMu           *sync.RWMutex
-	readersQueue   *wq.WaitingQueue
-	writersQueue   *wq.WaitingQueue
-	numMissWriters int
+	id               int64
+	rwc              *RWCounter
+	rwMu             *sync.RWMutex
+	readersWaitQueue *wq.WaitingQueue
+	writersWaitQueue *wq.WaitingQueue
+	numMissWriters   int
 }
 
 func NewReader(
 	rwc *RWCounter,
 	rwMu *sync.RWMutex,
-	readersQueue *wq.WaitingQueue,
-	writersQueue *wq.WaitingQueue) *Reader {
+	readersWaitQueue *wq.WaitingQueue,
+	writersWaitQueue *wq.WaitingQueue) *Reader {
 	atomic.AddInt64(&newReaderId, 1)
 	return &Reader{
-		id:           newReaderId,
-		rwc:          rwc,
-		rwMu:         rwMu,
-		readersQueue: readersQueue,
-		writersQueue: writersQueue,
+		id:               newReaderId,
+		rwc:              rwc,
+		rwMu:             rwMu,
+		readersWaitQueue: readersWaitQueue,
+		writersWaitQueue: writersWaitQueue,
 	}
 }
 
 func (r *Reader) Execute() {
 	for {
 		r.startRead()
-		sleep()
+		r.Sleep()
 		r.endRead()
 	}
 }
 
+func (r *Reader) Sleep() {
+	time.Sleep(time.Duration(rand.Intn(1000)) * time.Millisecond)
+}
+
 func (r *Reader) startRead() {
-	sleep()
+	r.Sleep()
 	r.rwMu.RLock()
 	// fmt.Println("START READ ", r.id)
 	defer r.rwMu.RUnlock()
-	if r.rwc.GetWriters() != 0 || !r.writersQueue.IsQueueEmpty() {
+	if r.rwc.GetWriters() != 0 || !r.writersWaitQueue.IsQueueEmpty() {
 		// fmt.Println("READER BLOCKED ", r.id)
 		r.wait()
 		// fmt.Println("READER FREE ", r.id)
 	}
 	r.rwc.AddReader()
-	if waitingReaders.Len() != 0 {
-		reader := waitingReaders.Front().Value.(*Reader)
-		if reader.numMissWriters == 2 || r.writersQueue.IsQueueEmpty() {
+	if readersQueue.Size() != 0 {
+		reader := readersQueue.Top()
+		if reader.numMissWriters == 2 || r.writersWaitQueue.IsQueueEmpty() {
 			r.wakeReader()
 		}
 	}
@@ -73,44 +77,26 @@ func (r *Reader) endRead() {
 }
 
 func (r *Reader) wait() {
-	waitingReaders.PushBack(r)
-	r.readersQueue.Enqueue(r.id)
+	readersQueue.Enqueue(r)
+	r.readersWaitQueue.Enqueue(r.id)
 	r.rwMu.RUnlock()
-	r.readersQueue.Wait(r.id)
+	r.readersWaitQueue.Wait(r.id)
 	r.rwMu.RLock()
 }
 
 func (r *Reader) wakeReader() {
-	freeReader()
-	if !r.readersQueue.IsQueueEmpty() {
-		r.readersQueue.Dequeue()
+	readersQueue.Dequeue()
+	if !r.readersWaitQueue.IsQueueEmpty() {
+		r.readersWaitQueue.Dequeue()
 		r.rwMu.RUnlock()
 		r.rwMu.RLock()
 	}
 }
 
 func (r *Reader) wakeWriter() {
-	if !r.writersQueue.IsQueueEmpty() {
-		r.writersQueue.Dequeue()
+	if !r.writersWaitQueue.IsQueueEmpty() {
+		r.writersWaitQueue.Dequeue()
 		r.rwMu.RUnlock()
 		r.rwMu.RLock()
-	}
-}
-
-func freeReader() {
-	mu.Lock()
-	defer mu.Unlock()
-	topReader := waitingReaders.Front()
-	waitingReaders.Remove(topReader)
-	reader := topReader.Value.(*Reader)
-	reader.numMissWriters = 0
-}
-
-func increaseNumMissWriters() {
-	mu.Lock()
-	defer mu.Unlock()
-	for el := waitingReaders.Front(); el != nil; el = el.Next() {
-		reader := el.Value.(*Reader)
-		reader.numMissWriters++
 	}
 }

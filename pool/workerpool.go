@@ -6,6 +6,7 @@ const maxTasks int = 128
 
 type Task interface {
 	Execute()
+	Sleep()
 }
 
 type Pool struct {
