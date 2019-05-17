@@ -6,7 +6,7 @@ import (
 )
 
 type ReadersQueue struct {
-	mu    sync.Mutex
+	rwMu  sync.RWMutex
 	queue *list.List
 }
 
@@ -17,20 +17,20 @@ func NewReadersQueue() *ReadersQueue {
 }
 
 func (rq *ReadersQueue) Enqueue(r *Reader) {
-	rq.mu.Lock()
-	defer rq.mu.Unlock()
+	rq.rwMu.Lock()
+	defer rq.rwMu.Unlock()
 	rq.queue.PushBack(r)
 }
 
 func (rq *ReadersQueue) Size() int {
-	rq.mu.Lock()
-	defer rq.mu.Unlock()
+	rq.rwMu.RLock()
+	defer rq.rwMu.RUnlock()
 	return rq.queue.Len()
 }
 
 func (rq *ReadersQueue) Dequeue() {
-	rq.mu.Lock()
-	defer rq.mu.Unlock()
+	rq.rwMu.Lock()
+	defer rq.rwMu.Unlock()
 	topReader := rq.queue.Front()
 	rq.queue.Remove(topReader)
 	reader := topReader.Value.(*Reader)
@@ -38,14 +38,14 @@ func (rq *ReadersQueue) Dequeue() {
 }
 
 func (rq *ReadersQueue) Top() *Reader {
-	rq.mu.Lock()
-	defer rq.mu.Unlock()
+	rq.rwMu.RLock()
+	defer rq.rwMu.RUnlock()
 	return rq.queue.Front().Value.(*Reader)
 }
 
 func (rq *ReadersQueue) IncreaseNumMissWriters() {
-	rq.mu.Lock()
-	defer rq.mu.Unlock()
+	rq.rwMu.Lock()
+	defer rq.rwMu.Unlock()
 	for el := rq.queue.Front(); el != nil; el = el.Next() {
 		reader := el.Value.(*Reader)
 		reader.numMissWriters++

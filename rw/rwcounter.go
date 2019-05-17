@@ -7,7 +7,7 @@ import (
 )
 
 type RWCounter struct {
-	mu     sync.Mutex
+	rwMu   sync.RWMutex
 	rs, ws int
 }
 
@@ -16,29 +16,29 @@ func NewRWCounter() *RWCounter {
 }
 
 func (rwc *RWCounter) AddReader() {
-	rwc.mu.Lock()
-	defer rwc.mu.Unlock()
+	rwc.rwMu.Lock()
+	defer rwc.rwMu.Unlock()
 	rwc.rs++
 	rwc.printNumRW()
 }
 
 func (rwc *RWCounter) RemoveReader() {
-	rwc.mu.Lock()
-	defer rwc.mu.Unlock()
+	rwc.rwMu.Lock()
+	defer rwc.rwMu.Unlock()
 	rwc.rs--
 	rwc.printNumRW()
 }
 
 func (rwc *RWCounter) AddWriter() {
-	rwc.mu.Lock()
-	defer rwc.mu.Unlock()
+	rwc.rwMu.Lock()
+	defer rwc.rwMu.Unlock()
 	rwc.ws++
 	rwc.printNumRW()
 }
 
 func (rwc *RWCounter) RemoveWriter() {
-	rwc.mu.Lock()
-	defer rwc.mu.Unlock()
+	rwc.rwMu.Lock()
+	defer rwc.rwMu.Unlock()
 	rwc.ws--
 	rwc.printNumRW()
 }
@@ -49,13 +49,13 @@ func (rwc *RWCounter) printNumRW() {
 }
 
 func (rwc *RWCounter) GetReaders() int {
-	rwc.mu.Lock()
-	defer rwc.mu.Unlock()
+	rwc.rwMu.RLock()
+	defer rwc.rwMu.RUnlock()
 	return rwc.rs
 }
 
 func (rwc *RWCounter) GetWriters() int {
-	rwc.mu.Lock()
-	defer rwc.mu.Unlock()
+	rwc.rwMu.RLock()
+	defer rwc.rwMu.RUnlock()
 	return rwc.ws
 }
